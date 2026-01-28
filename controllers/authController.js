@@ -10,6 +10,10 @@ export const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email, and password are required" });
+    }
+
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ error: "JWT_SECRET is not configured" });
     }
@@ -31,6 +35,10 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
 
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ error: "JWT_SECRET is not configured" });

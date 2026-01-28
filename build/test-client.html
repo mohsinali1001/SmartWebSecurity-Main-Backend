@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigitalAxis Client Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #60a5fa;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background: #1a1a1a;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1a1a1a;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .info {
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DigitalAxis Attack Detection Test Client</h1>
+        <p>This page demonstrates how to use the DigitalAxis client script to send events for attack detection.</p>
+        
+        <div class="form-group">
+            <label for="apiKey">API Key:</label>
+            <input type="text" id="apiKey" placeholder="Enter your API key" />
+        </div>
+        
+        <div class="form-group">
+            <label for="apiUrl">API URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:5000/api/predict" />
+        </div>
+        
+        <button onclick="sendTestEvent()">Send Test Event</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- DigitalAxis Client Script -->
+    <script>
+        (function(){
+            const API_URL = "http://localhost:5000/api/predict";
+            const API_KEY = ""; // Will be set dynamically
+
+            function sendEvent(payload){
+                const apiKey = document.getElementById('apiKey').value || API_KEY;
+                if (!apiKey) {
+                    console.error("API key not set");
+                    return;
+                }
+
+                fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-api-key": apiKey
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Event sent:", data);
+                    showResult(data, true);
+                })
+                .catch(err => {
+                    console.error("Error sending event:", err);
+                    showResult({ error: err.message }, false);
+                });
+            }
+
+            function showResult(data, success) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result ' + (success ? 'success' : 'error');
+                resultDiv.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            }
+
+            // Auto-send on page load (if API key is set)
+            window.addEventListener("load", ()=>{
+                const apiKey = document.getElementById('apiKey').value;
+                if (apiKey) {
+                    sendEvent({
+                        network_packet_size: 1500,
+                        protocol_type: "TCP",
+                        login_attempts: 1,
+                        session_duration: 300.0,
+                        encryption_used: "AES",
+                        ip_reputation_score: 0.9,
+                        failed_logins: 0,
+                        browser_type: "Chrome",
+                        unusual_time_access: 0
+                    });
+                }
+            });
+
+            // Expose sendEvent globally
+            window.DA = { sendEvent };
+        })();
+
+        function sendTestEvent() {
+            const apiKey = document.getElementById('apiKey').value;
+            if (!apiKey) {
+                alert("Please enter an API key");
+                return;
+            }
+
+            window.DA.sendEvent({
+                network_packet_size: Math.random() * 2000 + 500,
+                protocol_type: ["TCP", "UDP", "HTTPS"][Math.floor(Math.random() * 3)],
+                login_attempts: Math.floor(Math.random() * 5),
+                session_duration: Math.random() * 1000,
+                encryption_used: ["AES", "TLS", "SSL"][Math.floor(Math.random() * 3)],
+                ip_reputation_score: Math.random(),
+                failed_logins: Math.floor(Math.random() * 3),
+                browser_type: ["Chrome", "Firefox", "Safari"][Math.floor(Math.random() * 3)],
+                unusual_time_access: Math.floor(Math.random() * 2)
+            });
+        }
+    </script>
+</body>
+</html>
+
