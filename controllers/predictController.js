@@ -97,8 +97,10 @@ export const predict = async (req, res) => {
 export const getOverview = async (req, res) => {
   try {
     const userId = req.user?.id;
+    console.log(`📊 getOverview called for user:`, userId);
 
     if (!userId) {
+      console.warn("⚠️  No userId found in req.user");
       return res.status(401).json({ 
         error: "User not authenticated",
         total_predictions: 0,
@@ -109,13 +111,16 @@ export const getOverview = async (req, res) => {
     }
 
     // Get total predictions
+    console.log(`🔍 Fetching total predictions for user ${userId}`);
     const totalResult = await pool.query(
       "SELECT COUNT(*) as count FROM predictions WHERE user_id = $1",
       [userId]
     );
     const totalPredictions = parseInt(totalResult.rows[0]?.count || 0);
+    console.log(`✓ Total predictions: ${totalPredictions}`);
 
     // Get total attacks (where attack_detected = true)
+    console.log(`🔍 Fetching total attacks for user ${userId}`);
     const attacksResult = await pool.query(
       `SELECT COUNT(*) as count FROM predictions 
        WHERE user_id = $1 
@@ -123,8 +128,10 @@ export const getOverview = async (req, res) => {
       [userId]
     );
     const totalAttacks = parseInt(attacksResult.rows[0]?.count || 0);
+    console.log(`✓ Total attacks: ${totalAttacks}`);
 
     // Get latest prediction with event details
+    console.log(`🔍 Fetching latest prediction for user ${userId}`);
     const latestResult = await pool.query(
       `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.payload, p.attack_detected, p.risk_score,
               e.payload as event_payload
@@ -136,8 +143,10 @@ export const getOverview = async (req, res) => {
       [userId]
     );
     const latestPrediction = latestResult.rows[0] || null;
+    console.log(`✓ Latest prediction:`, latestPrediction ? "Found" : "None");
 
     // Get recent predictions with event details (last 10)
+    console.log(`🔍 Fetching recent predictions for user ${userId}`);
     const recentResult = await pool.query(
       `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.payload, p.attack_detected, p.risk_score,
               e.payload as event_payload
@@ -148,6 +157,7 @@ export const getOverview = async (req, res) => {
        LIMIT 10`,
       [userId]
     );
+    console.log(`✓ Recent predictions: ${recentResult.rows.length} records`);
 
     console.log(`✅ Overview loaded for user ${userId}: ${totalPredictions} predictions, ${totalAttacks} attacks`);
 
@@ -158,9 +168,16 @@ export const getOverview = async (req, res) => {
       recent_predictions: recentResult.rows,
     });
   } catch (error) {
-    console.error("❌ Overview error:", error.message);
+    console.error("❌ Overview error:", {
+      message: error.message,
+      code: error.code,
+      query: error.query,
+      params: error.params,
+      stack: error.stack
+    });
     res.status(500).json({ 
       error: error.message || "Failed to load overview data",
+      code: error.code,
       total_predictions: 0,
       total_attacks: 0,
       latest_prediction: null,

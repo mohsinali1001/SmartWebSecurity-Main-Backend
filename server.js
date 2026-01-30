@@ -34,15 +34,27 @@ app.use(
 );
 app.use(express.json());
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n📨 ${timestamp} ${req.method} ${req.path}`);
+  console.log(`   IP: ${req.ip}`);
+  console.log(`   Headers:`, {
+    authorization: req.headers.authorization ? "Present" : "Missing",
+    contentType: req.headers["content-type"],
+    origin: req.headers.origin,
+  });
+  next();
+});
+
 // Test database connection
-(async () => {
-  try {
-    await pool.query("SELECT 1");
-    console.log("✅ Database connected successfully");
-  } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
-  }
-})();
+console.log("🔍 Testing database connection...");
+try {
+  await pool.query("SELECT 1");
+  console.log("✅ Database connected successfully");
+} catch (error) {
+  console.error("❌ Database connection failed:", error.message);
+}
 
 // API Routes (MUST come before static file serving)
 app.use("/api/auth", authRoutes);
@@ -58,7 +70,13 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: "API route not found" });
   }
-  res.sendFile(path.join(buildPath, "index.html"));
+  const indexPath = path.join(buildPath, "index.html");
+  try {
+    res.sendFile(indexPath);
+  } catch (error) {
+    console.error(`Error serving index.html from ${indexPath}:`, error.message);
+    res.status(404).json({ error: "Frontend not found" });
+  }
 });
 
 // Create HTTP server manually for Socket.IO
@@ -67,8 +85,17 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 initSocket(server);
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Start server with error handling
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
+  console.log(`   Try: http://localhost:${PORT}`);
+});
+
+server.on("error", (error) => {
+  console.error("❌ Server error:", error.message);
+  if (error.code === "EADDRINUSE") {
+    console.error(`   Port ${PORT} is already in use!`);
+  }
+  process.exit(1);
 });
 
