@@ -96,14 +96,24 @@ export const predict = async (req, res) => {
 // GET /api/dashboard/overview - Dashboard overview stats
 export const getOverview = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ 
+        error: "User not authenticated",
+        total_predictions: 0,
+        total_attacks: 0,
+        latest_prediction: null,
+        recent_predictions: []
+      });
+    }
 
     // Get total predictions
     const totalResult = await pool.query(
       "SELECT COUNT(*) as count FROM predictions WHERE user_id = $1",
       [userId]
     );
-    const totalPredictions = parseInt(totalResult.rows[0].count);
+    const totalPredictions = parseInt(totalResult.rows[0]?.count || 0);
 
     // Get total attacks (where attack_detected = true)
     const attacksResult = await pool.query(
@@ -112,7 +122,7 @@ export const getOverview = async (req, res) => {
        AND attack_detected = true`,
       [userId]
     );
-    const totalAttacks = parseInt(attacksResult.rows[0].count);
+    const totalAttacks = parseInt(attacksResult.rows[0]?.count || 0);
 
     // Get latest prediction with event details
     const latestResult = await pool.query(
@@ -146,14 +156,29 @@ export const getOverview = async (req, res) => {
       recent_predictions: recentResult.rows,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Overview error:", error.message);
+    res.status(500).json({ 
+      error: error.message || "Failed to load overview data",
+      total_predictions: 0,
+      total_attacks: 0,
+      latest_prediction: null,
+      recent_predictions: []
+    });
   }
 };
 
 // GET /api/dashboard/predictions - Get predictions with filters
 export const getPredictions = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ 
+        error: "User not authenticated",
+        predictions: []
+      });
+    }
+
     const limit = parseInt(req.query.limit) || 50;
     const since = req.query.since; // ISO timestamp
 
@@ -178,14 +203,26 @@ export const getPredictions = async (req, res) => {
 
     res.json({ predictions: result.rows });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Predictions error:", error.message);
+    res.status(500).json({ 
+      error: error.message || "Failed to load predictions",
+      predictions: []
+    });
   }
 };
 
 // GET /api/dashboard/events - Get all events for a user
 export const getEvents = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ 
+        error: "User not authenticated",
+        events: []
+      });
+    }
+
     const limit = parseInt(req.query.limit) || 50;
 
     const result = await pool.query(
@@ -203,14 +240,30 @@ export const getEvents = async (req, res) => {
 
     res.json({ events: result.rows });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Events error:", error.message);
+    res.status(500).json({ 
+      error: error.message || "Failed to load events",
+      events: []
+    });
   }
 };
 
 // GET /api/dashboard/stats - Get user statistics
 export const getStats = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ 
+        error: "User not authenticated",
+        total_events: 0,
+        total_predictions: 0,
+        total_attacks: 0,
+        avg_risk_score: 0,
+        max_risk_score: 0,
+        min_risk_score: 0
+      });
+    }
 
     // Get comprehensive statistics
     const statsResult = await pool.query(
@@ -227,18 +280,27 @@ export const getStats = async (req, res) => {
       [userId]
     );
 
-    const stats = statsResult.rows[0];
+    const stats = statsResult.rows[0] || {};
 
     res.json({
-      total_events: parseInt(stats.total_events) || 0,
-      total_predictions: parseInt(stats.total_predictions) || 0,
-      total_attacks: parseInt(stats.total_attacks) || 0,
-      avg_risk_score: parseFloat(stats.avg_risk_score) || 0,
-      max_risk_score: parseFloat(stats.max_risk_score) || 0,
-      min_risk_score: parseFloat(stats.min_risk_score) || 0,
+      total_events: parseInt(stats.total_events || 0),
+      total_predictions: parseInt(stats.total_predictions || 0),
+      total_attacks: parseInt(stats.total_attacks || 0),
+      avg_risk_score: parseFloat(stats.avg_risk_score || 0),
+      max_risk_score: parseFloat(stats.max_risk_score || 0),
+      min_risk_score: parseFloat(stats.min_risk_score || 0),
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("❌ Stats error:", error.message);
+    res.status(500).json({ 
+      error: error.message || "Failed to load statistics",
+      total_events: 0,
+      total_predictions: 0,
+      total_attacks: 0,
+      avg_risk_score: 0,
+      max_risk_score: 0,
+      min_risk_score: 0
+    });
   }
 };
 
