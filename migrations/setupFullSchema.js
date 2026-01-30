@@ -15,7 +15,7 @@ async function setupFullSchema() {
     console.log("✅ Database schema created/updated successfully!");
     
     // Verify the tables
-    const tables = ['users', 'api_keys', 'predictions'];
+    const tables = ['users', 'api_keys', 'events', 'predictions'];
     for (const table of tables) {
       const result = await pool.query(`
         SELECT column_name, data_type 
