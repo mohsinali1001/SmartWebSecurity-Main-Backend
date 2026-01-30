@@ -149,6 +149,8 @@ export const getOverview = async (req, res) => {
       [userId]
     );
 
+    console.log(`✅ Overview loaded for user ${userId}: ${totalPredictions} predictions, ${totalAttacks} attacks`);
+
     res.json({
       total_predictions: totalPredictions,
       total_attacks: totalAttacks,
