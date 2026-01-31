@@ -9,6 +9,7 @@ import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import apiKeyRoutes from "./routes/apiKeyRoutes.js";
 import predictRoutes from "./routes/predictRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
 import { initSocket } from "./socket.js";
 import { ensureSchema } from "./migrations/ensure_schema.js";
 
@@ -68,6 +69,7 @@ try {
 // API Routes (MUST come before static file serving)
 app.use("/api/auth", authRoutes);
 app.use("/api/apikeys", apiKeyRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api", predictRoutes);
 
 // Serve static files from React build folder
