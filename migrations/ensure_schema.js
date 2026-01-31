@@ -6,6 +6,20 @@ export async function ensureSchema() {
   try {
     console.log("🔄 Ensuring database schema is up-to-date...");
 
+    // 0. Handle column rename: 'prediction' -> 'prediction_result'
+    try {
+      await client.query(`
+        ALTER TABLE IF EXISTS predictions 
+        RENAME COLUMN IF EXISTS prediction TO prediction_result;
+      `);
+      console.log("✓ Renamed 'prediction' column to 'prediction_result'");
+    } catch (error) {
+      // Column might not exist or might already be renamed, that's fine
+      if (!error.message.includes("does not exist")) {
+        console.log("ℹ️  Column rename status: column already in correct form");
+      }
+    }
+
     // 1. Create users table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -54,8 +68,9 @@ export async function ensureSchema() {
         event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
         prediction_timestamp TIMESTAMP DEFAULT now(),
         payload JSONB,
-        prediction JSONB,
+        prediction_result JSONB,
         risk_score FLOAT,
+        is_anomaly BOOLEAN,
         attack_detected BOOLEAN,
         ip VARCHAR(50),
         endpoint VARCHAR(200),
@@ -67,9 +82,11 @@ export async function ensureSchema() {
     // 5. Add missing columns to predictions table
     const columnsToAdd = [
       { name: 'attack_detected', type: 'BOOLEAN' },
+      { name: 'is_anomaly', type: 'BOOLEAN' },
       { name: 'risk_score', type: 'FLOAT' },
       { name: 'event_id', type: 'INTEGER REFERENCES events(id) ON DELETE CASCADE' },
       { name: 'prediction_timestamp', type: 'TIMESTAMP DEFAULT now()' },
+      { name: 'prediction_result', type: 'JSONB' },
       { name: 'ip', type: 'VARCHAR(50)' },
       { name: 'endpoint', type: 'VARCHAR(200)' }
     ];

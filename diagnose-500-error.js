@@ -104,7 +104,7 @@ try {
   
   // Test latest prediction join
   const latestResult = await pool.query(
-    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.attack_detected, p.risk_score,
+    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
             e.payload as event_payload
      FROM predictions p
      LEFT JOIN events e ON p.event_id = e.id
@@ -117,7 +117,7 @@ try {
   
   // Test recent predictions
   const recentResult = await pool.query(
-    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.attack_detected, p.risk_score,
+    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
             e.payload as event_payload
      FROM predictions p
      LEFT JOIN events e ON p.event_id = e.id
@@ -141,7 +141,7 @@ console.log("\n7️⃣  Checking for Data Serialization Issues...");
 try {
   const userId = 1;
   const recentResult = await pool.query(
-    `SELECT p.id, p.prediction, e.payload as event_payload
+    `SELECT p.id, p.prediction_result, e.payload as event_payload
      FROM predictions p
      LEFT JOIN events e ON p.event_id = e.id
      WHERE p.user_id = $1 LIMIT 1`,

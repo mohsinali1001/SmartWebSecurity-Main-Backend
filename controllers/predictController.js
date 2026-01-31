@@ -42,9 +42,9 @@ export const predict = async (req, res) => {
 
     // Step 3: Save prediction linked to event
     const predictionResult = await client.query(
-      `INSERT INTO predictions (user_id, event_id, payload, prediction, risk_score, attack_detected, ip, endpoint, prediction_timestamp)
+      `INSERT INTO predictions (user_id, event_id, payload, prediction_result, risk_score, attack_detected, ip, endpoint, prediction_timestamp)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
-       RETURNING id, prediction_timestamp, prediction`,
+       RETURNING id, prediction_timestamp, prediction_result`,
       [
         userId,
         eventId,
@@ -70,7 +70,7 @@ export const predict = async (req, res) => {
         id: savedPrediction.id,
         event_id: eventId,
         prediction_timestamp: savedPrediction.prediction_timestamp,
-        prediction: savedPrediction.prediction,
+        prediction_result: savedPrediction.prediction_result,
         attack_detected: attackDetected,
         risk_score: riskScore,
       });
@@ -133,7 +133,7 @@ export const getOverview = async (req, res) => {
     // Get latest prediction with event details
     console.log(`🔍 Fetching latest prediction for user ${userId}`);
     const latestResult = await pool.query(
-      `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.attack_detected, p.risk_score,
+      `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
               e.payload as event_payload
        FROM predictions p
        LEFT JOIN events e ON p.event_id = e.id
@@ -148,7 +148,7 @@ export const getOverview = async (req, res) => {
     // Get recent predictions with event details (last 10)
     console.log(`🔍 Fetching recent predictions for user ${userId}`);
     const recentResult = await pool.query(
-      `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.attack_detected, p.risk_score,
+      `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
               e.payload as event_payload
        FROM predictions p
        LEFT JOIN events e ON p.event_id = e.id
@@ -201,7 +201,7 @@ export const getPredictions = async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     const since = req.query.since; // ISO timestamp
 
-    let query = `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction, p.attack_detected, p.risk_score, p.ip, p.endpoint,
+    let query = `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score, p.ip, p.endpoint,
                         e.payload as event_payload
                  FROM predictions p
                  LEFT JOIN events e ON p.event_id = e.id
