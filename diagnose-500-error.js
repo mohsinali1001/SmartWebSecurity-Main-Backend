@@ -70,7 +70,7 @@ try {
   
   // Check for critical columns
   const columns = result.rows.map(r => r.column_name);
-  const required = ['id', 'user_id', 'event_id', 'attack_detected', 'prediction'];
+  const required = ['id', 'user_id', 'event_id', 'is_anomaly', 'prediction_result'];
   const missing = required.filter(col => !columns.includes(col));
   
   if (missing.length > 0) {
@@ -97,17 +97,19 @@ try {
   
   // Test attacks count
   const attacksResult = await pool.query(
-    `SELECT COUNT(*) as count FROM predictions WHERE user_id = $1 AND attack_detected = true`,
+    `SELECT COUNT(*) as count FROM predictions WHERE user_id = $1 AND (prediction_result->>'attack_detected')::boolean = true`,
     [userId]
   );
   console.log(`   ✅ Total attacks count: ${attacksResult.rows[0].count}`);
   
   // Test latest prediction join
   const latestResult = await pool.query(
-    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
-            e.payload as event_payload
+    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, 
+            (p.prediction_result->>'attack_detected')::boolean as attack_detected, 
+            p.risk_score, p.is_anomaly,
+            ce.payload as event_payload
      FROM predictions p
-     LEFT JOIN events e ON p.event_id = e.id
+     LEFT JOIN client_events ce ON p.event_id = ce.id
      WHERE p.user_id = $1 
      ORDER BY p.prediction_timestamp DESC 
      LIMIT 1`,
@@ -117,10 +119,12 @@ try {
   
   // Test recent predictions
   const recentResult = await pool.query(
-    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, p.attack_detected, p.risk_score,
-            e.payload as event_payload
+    `SELECT p.id, p.event_id, p.prediction_timestamp, p.prediction_result, 
+            (p.prediction_result->>'attack_detected')::boolean as attack_detected, 
+            p.risk_score, p.is_anomaly,
+            ce.payload as event_payload
      FROM predictions p
-     LEFT JOIN events e ON p.event_id = e.id
+     LEFT JOIN client_events ce ON p.event_id = ce.id
      WHERE p.user_id = $1 
      ORDER BY p.prediction_timestamp DESC 
      LIMIT 10`,

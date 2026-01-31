@@ -60,35 +60,62 @@ export async function ensureSchema() {
     `);
     console.log("✓ Events table ready");
 
+    // 3b. Create client_events table if not exists (main event table for predictions)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS client_events (
+        id SERIAL PRIMARY KEY,
+        "timestamp" TIMESTAMP DEFAULT now(),
+        payload JSONB,
+        forwarded BOOLEAN DEFAULT false,
+        forward_status INTEGER,
+        forward_response JSONB,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    console.log("✓ Client events table ready");
+
     // 4. Create predictions table if not exists
     await client.query(`
       CREATE TABLE IF NOT EXISTS predictions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+        event_id INTEGER NOT NULL REFERENCES client_events(id) ON DELETE CASCADE,
         prediction_timestamp TIMESTAMP DEFAULT now(),
-        payload JSONB,
-        prediction_result JSONB,
+        prediction_result JSONB NOT NULL,
         risk_score FLOAT,
         is_anomaly BOOLEAN,
-        attack_detected BOOLEAN,
-        ip VARCHAR(50),
-        endpoint VARCHAR(200),
         created_at TIMESTAMP DEFAULT now()
       );
     `);
     console.log("✓ Predictions table ready");
 
-    // 5. Add missing columns to predictions table
+    // 5. Add missing columns to client_events table if needed
+    const clientEventsColumns = [
+      { name: 'user_id', type: 'INTEGER REFERENCES users(id) ON DELETE CASCADE' },
+      { name: 'payload', type: 'JSONB' },
+      { name: 'forwarded', type: 'BOOLEAN DEFAULT false' },
+      { name: 'forward_status', type: 'INTEGER' },
+      { name: 'forward_response', type: 'JSONB' }
+    ];
+
+    for (const col of clientEventsColumns) {
+      try {
+        await client.query(`
+          ALTER TABLE client_events 
+          ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};
+        `);
+        console.log(`✓ Column '${col.name}' ensured in client_events table`);
+      } catch (error) {
+        console.log(`ℹ️  Column '${col.name}' status: already exists or error`);
+      }
+    }
+
+    // 6. Add missing columns to predictions table if needed
     const columnsToAdd = [
-      { name: 'attack_detected', type: 'BOOLEAN' },
       { name: 'is_anomaly', type: 'BOOLEAN' },
       { name: 'risk_score', type: 'FLOAT' },
-      { name: 'event_id', type: 'INTEGER REFERENCES events(id) ON DELETE CASCADE' },
       { name: 'prediction_timestamp', type: 'TIMESTAMP DEFAULT now()' },
-      { name: 'prediction_result', type: 'JSONB' },
-      { name: 'ip', type: 'VARCHAR(50)' },
-      { name: 'endpoint', type: 'VARCHAR(200)' }
+      { name: 'prediction_result', type: 'JSONB NOT NULL' }
     ];
 
     for (const col of columnsToAdd) {
@@ -99,22 +126,22 @@ export async function ensureSchema() {
         `);
         console.log(`✓ Column '${col.name}' ensured in predictions table`);
       } catch (error) {
-        // Column might already exist or have conflicts, log but continue
-        console.log(`ℹ️  Column '${col.name}' status: ${error.message.includes('already exists') ? 'exists' : error.message}`);
+        console.log(`ℹ️  Column '${col.name}' status: already exists`);
       }
     }
 
-    // 6. Create indexes for better performance
+    // 7. Create indexes for better performance
     const indexes = [
       { name: 'idx_api_keys_user_id', table: 'api_keys', columns: '(user_id)' },
       { name: 'idx_api_keys_key', table: 'api_keys', columns: '(key)' },
       { name: 'idx_events_user_id', table: 'events', columns: '(user_id)' },
       { name: 'idx_events_timestamp', table: 'events', columns: '(event_timestamp)' },
       { name: 'idx_events_api_key', table: 'events', columns: '(api_key)' },
+      { name: 'idx_client_events_user_id', table: 'client_events', columns: '(user_id)' },
+      { name: 'idx_client_events_timestamp', table: 'client_events', columns: '("timestamp")' },
       { name: 'idx_predictions_user_id', table: 'predictions', columns: '(user_id)' },
       { name: 'idx_predictions_event_id', table: 'predictions', columns: '(event_id)' },
-      { name: 'idx_predictions_timestamp', table: 'predictions', columns: '(prediction_timestamp)' },
-      { name: 'idx_predictions_attack_detected', table: 'predictions', columns: '(attack_detected)' }
+      { name: 'idx_predictions_timestamp', table: 'predictions', columns: '(prediction_timestamp)' }
     ];
 
     for (const idx of indexes) {
