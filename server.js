@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import apiKeyRoutes from "./routes/apiKeyRoutes.js";
 import predictRoutes from "./routes/predictRoutes.js";
 import { initSocket } from "./socket.js";
+import { ensureSchema } from "./migrations/ensure_schema.js";
 
 dotenv.config();
 
@@ -54,6 +55,14 @@ try {
   console.log("✅ Database connected successfully");
 } catch (error) {
   console.error("❌ Database connection failed:", error.message);
+}
+
+// Ensure database schema is up-to-date
+try {
+  await ensureSchema();
+} catch (error) {
+  console.error("❌ Schema setup error:", error.message);
+  console.error("   Server may have issues with database operations");
 }
 
 // API Routes (MUST come before static file serving)
